@@ -9,19 +9,19 @@ class FingerDrawer:
         self.mp_hands = mp.solutions.hands
         self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-        self.fontFace = cv2.FONT_HERSHEY_SIMPLEX
-        self.lineType = cv2.LINE_AA
-        self.w, self.h = 1080, 720
-        self.draw = np.zeros((self.h, self.w, 4), dtype='uint8')
+        self.font_face = cv2.FONT_HERSHEY_SIMPLEX
+        self.line_type = cv2.LINE_AA
+        self.width, self.height = 1080, 720
+        self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
         self.dots = []
         self.color = (0, 0, 255, 255)
         self.init_color_palette()
 
     def init_color_palette(self):
         # 在畫面上方放入紅色、綠色和藍色正方形
-        cv2.rectangle(self.draw, (20, 20), (60, 60), (0, 0, 255, 255), -1)
-        cv2.rectangle(self.draw, (80, 20), (120, 60), (0, 255, 0, 255), -1)
-        cv2.rectangle(self.draw, (140, 20), (180, 60), (255, 0, 0, 255), -1)
+        cv2.rectangle(self.canvas, (20, 20), (60, 60), (0, 0, 255, 255), -1)
+        cv2.rectangle(self.canvas, (80, 20), (120, 60), (0, 255, 0, 255), -1)
+        cv2.rectangle(self.canvas, (140, 20), (180, 60), (255, 0, 0, 255), -1)
 
     # 根據兩點的座標，計算角度
     def vector_2d_angle(self, v1, v2):
@@ -67,13 +67,13 @@ class FingerDrawer:
         else:
             return ''
 
-    def process_landmarks(self, img, hands):
-        img2 = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # 偵測手勢的影像轉換成 RGB 色彩
-        results = hands.process(img2)  # 偵測手勢
+    def process_landmarks(self, frame, hands):
+        frame_RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # 偵測手勢的影像轉換成 RGB 色彩
+        results = hands.process(frame_RGB)  # 偵測手勢
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-                finger_points = [(int(lm.x * self.w), int(lm.y * self.h)) for lm in hand_landmarks.landmark]
+                finger_points = [(int(lm.x * self.width), int(lm.y * self.height)) for lm in hand_landmarks.landmark]
                 if finger_points:
                     finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
                     text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
@@ -89,22 +89,22 @@ class FingerDrawer:
                         else:
                             self.dots.append([fx, fy])  # 記錄食指座標
                             if len(self.dots) > 1:
-                                dx1, dy1 = self.dots[-2]
-                                dx2, dy2 = self.dots[-1]
-                                cv2.line(self.draw, (dx1, dy1), (dx2, dy2), self.color, 5)  # 在黑色畫布上畫圖
+                                start_point = tuple(self.dots[-2])
+                                end_point = tuple(self.dots[-1])
+                                cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
                     else:
                         self.dots = []  # 如果換成別的手勢，清空 dots
 
-    def update_frame(self, img, draw):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)  # 畫圖的影像轉換成 BGRA 色彩
+    def update_frame(self, frame, canvas):
+        frame_BGRA = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)  # 畫圖的影像轉換成 BGRA 色彩
 
         # 將影像和黑色畫布合成
-        for j in range(self.w):
-            img[:, j, 0] = img[:, j, 0] * (1 - draw[:, j, 3] / 255) + draw[:, j, 0] * (draw[:, j, 3] / 255)
-            img[:, j, 1] = img[:, j, 1] * (1 - draw[:, j, 3] / 255) + draw[:, j, 1] * (draw[:, j, 3] / 255)
-            img[:, j, 2] = img[:, j, 2] * (1 - draw[:, j, 3] / 255) + draw[:, j, 2] * (draw[:, j, 3] / 255)
+        for j in range(self.width):
+            frame_BGRA[:, j, 0] = frame_BGRA[:, j, 0] * (1 - canvas[:, j, 3] / 255) + canvas[:, j, 0] * (canvas[:, j, 3] / 255)
+            frame_BGRA[:, j, 1] = frame_BGRA[:, j, 1] * (1 - canvas[:, j, 3] / 255) + canvas[:, j, 1] * (canvas[:, j, 3] / 255)
+            frame_BGRA[:, j, 2] = frame_BGRA[:, j, 2] * (1 - canvas[:, j, 3] / 255) + canvas[:, j, 2] * (canvas[:, j, 3] / 255)
 
-        return img
+        return frame_BGRA
 
     def run(self):
         with self.mp_hands.Hands(
@@ -117,27 +117,27 @@ class FingerDrawer:
                 return
 
             while True:
-                ret, img = self.cap.read()
+                ret, frame = self.cap.read()
 
                 if not ret:
                     print("Cannot receive frame")
                     break
 
-                img = cv2.resize(img, (self.w, self.h))  # 縮小尺寸，加快處理效率
-                img = cv2.flip(img, 1)
+                frame = cv2.resize(frame, (self.width, self.height))  # 縮小尺寸，加快處理效率
+                frame = cv2.flip(frame, 1)
 
-                self.process_landmarks(img, hands)
+                self.process_landmarks(frame, hands)
 
-                img = self.update_frame(img, self.draw)
+                frame = self.update_frame(frame, self.canvas)
 
-                cv2.imshow('WYDIWYG', img)
+                cv2.imshow('WYDIWYG', frame)
 
                 keyboard = cv2.waitKey(5)
                 if keyboard == ord('q'):
                     break
                 # 按下 r 重置畫面
                 if keyboard == ord('r'):
-                    self.draw = np.zeros((self.h, self.w, 4), dtype='uint8')
+                    self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
                     self.init_color_palette()
 
         self.cap.release()
