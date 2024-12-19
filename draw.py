@@ -75,29 +75,34 @@ class FingerDrawer:
             return ''
 
     def process_landmarks(self, results):
-        if results.hand_landmarks:
-            for hand_landmarks in results.hand_landmarks:
-                finger_points = [(int(lm.x * self.width), int(lm.y * self.height)) for lm in hand_landmarks]
-                if finger_points:
-                    finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
-                    text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
-                    if text == '1':
-                        fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
-                        if 20 <= fy <= 60:
-                            if 20 <= fx <= 60:
-                                self.color = (0, 0, 255, 255)  # 如果食指末端碰到紅色，顏色改成紅色
-                            elif 80 <= fx <= 120:
-                                self.color = (0, 255, 0, 255)  # 如果食指末端碰到綠色，顏色改成綠色
-                            elif 140 <= fx <= 180:
-                                self.color = (255, 0, 0, 255)  # 如果食指末端碰到藍色，顏色改成藍色
-                        else:
-                            self.dots.append([fx, fy])  # 記錄食指座標
-                            if len(self.dots) > 1:
-                                start_point = tuple(self.dots[-2])
-                                end_point = tuple(self.dots[-1])
-                                cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
-                    else:
-                        self.dots = []  # 如果換成別的手勢，清空 dots
+        if not results.hand_landmarks:
+            return
+
+        finger_points = [(int(lm.x * self.width), int(lm.y * self.height)) for lm in results.hand_landmarks[0]]
+
+        if not finger_points:
+            return
+
+        finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
+        text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
+
+        if text == '1':
+            fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
+            if 20 <= fy <= 60:
+                if 20 <= fx <= 60:
+                    self.color = (0, 0, 255, 255)  # 如果食指末端碰到紅色，顏色改成紅色
+                elif 80 <= fx <= 120:
+                    self.color = (0, 255, 0, 255)  # 如果食指末端碰到綠色，顏色改成綠色
+                elif 140 <= fx <= 180:
+                    self.color = (255, 0, 0, 255)  # 如果食指末端碰到藍色，顏色改成藍色
+            else:
+                self.dots.append([fx, fy])  # 記錄食指座標
+                if len(self.dots) > 1:
+                    start_point = tuple(self.dots[-2])
+                    end_point = tuple(self.dots[-1])
+                    cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
+        else:
+            self.dots = []  # 如果換成別的手勢，清空 dots
 
     def update_frame(self, frame, canvas):
         frame_BGRA = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)  # 畫圖的影像轉換成 BGRA 色彩
