@@ -1,7 +1,14 @@
+import time
 import cv2
 import mediapipe as mp
 import math
 import numpy as np
+
+BaseOptions = mp.tasks.BaseOptions
+HandLandmarker = mp.tasks.vision.HandLandmarker
+HandLandmarkerOptions = mp.tasks.vision.HandLandmarkerOptions
+HandLandmarkerResult = mp.tasks.vision.HandLandmarkerResult
+VisionRunningMode = mp.tasks.vision.RunningMode
 
 class FingerDrawer:
     def __init__(self):
@@ -67,13 +74,10 @@ class FingerDrawer:
         else:
             return ''
 
-    def process_landmarks(self, frame, hands):
-        frame_RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # 偵測手勢的影像轉換成 RGB 色彩
-        results = hands.process(frame_RGB)  # 偵測手勢
-
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                finger_points = [(int(lm.x * self.width), int(lm.y * self.height)) for lm in hand_landmarks.landmark]
+    def process_landmarks(self, results):
+        if results.hand_landmarks:
+            for hand_landmarks in results.hand_landmarks:
+                finger_points = [(int(lm.x * self.width), int(lm.y * self.height)) for lm in hand_landmarks]
                 if finger_points:
                     finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
                     text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
@@ -107,11 +111,15 @@ class FingerDrawer:
         return frame_BGRA
 
     def run(self):
-        with self.mp_hands.Hands(
-            model_complexity=0,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5) as hands:
-
+        options = HandLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path='./models/hand_landmarker.task'),
+            running_mode=VisionRunningMode.VIDEO,
+            num_hands=1,
+            min_hand_detection_confidence=0.5,
+            min_hand_presence_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
+        with HandLandmarker.create_from_options(options) as landmarker:
             if not self.cap.isOpened():
                 print("Cannot open camera")
                 return
@@ -125,8 +133,10 @@ class FingerDrawer:
 
                 frame = cv2.resize(frame, (self.width, self.height))  # 縮小尺寸，加快處理效率
                 frame = cv2.flip(frame, 1)
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                hand_landmarker_result = landmarker.detect_for_video(mp_image, int(time.time() * 1000))
 
-                self.process_landmarks(frame, hands)
+                self.process_landmarks(hand_landmarker_result)
 
                 frame = self.update_frame(frame, self.canvas)
 
