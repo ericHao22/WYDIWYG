@@ -3,6 +3,7 @@ import cv2
 import mediapipe as mp
 import math
 import numpy as np
+from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks.python.vision.hand_landmarker import HandLandmark
 
 BaseOptions = mp.tasks.BaseOptions
@@ -140,6 +141,23 @@ class FingerDrawer:
         else:
             self.dots = []  # 如果換成別的手勢，清空 dots
 
+    def draw_landmarks(self, frame, results):
+        if not results.hand_landmarks:
+            return frame
+
+        hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
+        hand_landmarks_proto.landmark.extend([
+            landmark_pb2.NormalizedLandmark(x=lm.x, y=lm.y, z=lm.z) for lm in results.hand_landmarks[0]
+        ])
+
+        mp.solutions.drawing_utils.draw_landmarks(
+            frame,
+            hand_landmarks_proto,
+            mp.solutions.hands.HAND_CONNECTIONS,
+        )
+
+        return frame
+
     def update_frame(self, frame, canvas):
         frame_BGRA = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)  # 畫圖的影像轉換成 BGRA 色彩
 
@@ -179,6 +197,7 @@ class FingerDrawer:
 
                 self.process_landmarks(hand_landmarker_result)
 
+                # frame = self.draw_landmarks(frame, hand_landmarker_result) # debug
                 frame = self.update_frame(frame, self.canvas)
 
                 cv2.imshow('WYDIWYG', frame)
