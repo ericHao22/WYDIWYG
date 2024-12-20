@@ -12,18 +12,26 @@ HandLandmarkerResult = mp.tasks.vision.HandLandmarkerResult
 VisionRunningMode = mp.tasks.vision.RunningMode
 
 class FingerDrawer:
-    def __init__(self):
+    def __init__(self, width=1080, height=720, fourcc='MJPG'):
         self.mp_drawing = mp.solutions.drawing_utils
         self.mp_hands = mp.solutions.hands
-        self.cap = cv2.VideoCapture(0)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        self.width, self.height = width, height
         self.font_face = cv2.FONT_HERSHEY_SIMPLEX
         self.line_type = cv2.LINE_AA
-        self.width, self.height = 1080, 720
         self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
         self.dots = []
         self.color = (0, 0, 255, 255)
+        self.init_video_capture(width, height, fourcc)
         self.init_color_palette()
+
+    def init_video_capture(self, width, height, fourcc):
+        cap = cv2.VideoCapture(0)
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        cap.set(cv2.CAP_PROP_FPS, 30)
+
+        self.cap = cap
 
     def init_color_palette(self):
         # 在畫面上方放入紅色、綠色和藍色正方形
