@@ -3,6 +3,7 @@ import cv2
 import mediapipe as mp
 import math
 import numpy as np
+from mediapipe.tasks.python.vision.hand_landmarker import HandLandmark
 
 BaseOptions = mp.tasks.BaseOptions
 HandLandmarker = mp.tasks.vision.HandLandmarker
@@ -43,26 +44,53 @@ class FingerDrawer:
     # 根據傳入的 21 個節點座標，得到該手指的角度
     def hand_angle(self, hand_):
         angle_list = []
+        wrist = hand_[HandLandmark.WRIST]
+
         # thumb 大拇指角度
+        thumb_mcp = hand_[HandLandmark.THUMB_MCP]
+        thumb_ip = hand_[HandLandmark.THUMB_IP]
+        thumb_tip = hand_[HandLandmark.THUMB_TIP]
         angle_list.append(self.vector_2d_angle(
-            ((int(hand_[0][0]) - int(hand_[2][0])), (int(hand_[0][1]) - int(hand_[2][1]))),
-            ((int(hand_[3][0]) - int(hand_[4][0])), (int(hand_[3][1]) - int(hand_[4][1])))))
+            ((wrist[0] - thumb_mcp[0]), (wrist[1] - thumb_mcp[1])),
+            ((thumb_ip[0] - thumb_tip[0]), (thumb_ip[1] - thumb_tip[1]))
+        ))
+
         # index 食指角度
+        index_pip = hand_[HandLandmark.INDEX_FINGER_PIP]
+        index_dip = hand_[HandLandmark.INDEX_FINGER_DIP]
+        index_tip = hand_[HandLandmark.INDEX_FINGER_TIP]
         angle_list.append(self.vector_2d_angle(
-            ((int(hand_[0][0]) - int(hand_[6][0])), (int(hand_[0][1]) - int(hand_[6][1]))),
-            ((int(hand_[7][0]) - int(hand_[8][0])), (int(hand_[7][1]) - int(hand_[8][1])))))
+            ((wrist[0] - index_pip[0]), (wrist[1] - index_pip[1])),
+            ((index_dip[0] - index_tip[0]), (index_dip[1] - index_tip[1]))
+        ))
+
         # middle 中指角度
+        middle_pip = hand_[HandLandmark.MIDDLE_FINGER_PIP]
+        middle_dip = hand_[HandLandmark.MIDDLE_FINGER_DIP]
+        middle_tip = hand_[HandLandmark.MIDDLE_FINGER_TIP]
         angle_list.append(self.vector_2d_angle(
-            ((int(hand_[0][0]) - int(hand_[10][0])), (int(hand_[0][1]) - int(hand_[10][1]))),
-            ((int(hand_[11][0]) - int(hand_[12][0])), (int(hand_[11][1]) - int(hand_[12][1])))))
+            ((wrist[0] - middle_pip[0]), (wrist[1] - middle_pip[1])),
+            ((middle_dip[0] - middle_tip[0]), (middle_dip[1] - middle_tip[1]))
+        ))
+
         # ring 無名指角度
+        ring_pip = hand_[HandLandmark.RING_FINGER_PIP]
+        ring_dip = hand_[HandLandmark.RING_FINGER_DIP]
+        ring_tip = hand_[HandLandmark.RING_FINGER_TIP]
         angle_list.append(self.vector_2d_angle(
-            ((int(hand_[0][0]) - int(hand_[14][0])), (int(hand_[0][1]) - int(hand_[14][1]))),
-            ((int(hand_[15][0]) - int(hand_[16][0])), (int(hand_[15][1]) - int(hand_[16][1])))))
-        # pink 小拇指角度
+            ((wrist[0] - ring_pip[0]), (wrist[1] - ring_pip[1])),
+            ((ring_dip[0] - ring_tip[0]), (ring_dip[1] - ring_tip[1]))
+        ))
+
+        # pinky 小拇指角度
+        pinky_pip = hand_[HandLandmark.PINKY_PIP]
+        pinky_dip = hand_[HandLandmark.PINKY_DIP]
+        pinky_tip = hand_[HandLandmark.PINKY_TIP]
         angle_list.append(self.vector_2d_angle(
-            ((int(hand_[0][0]) - int(hand_[18][0])), (int(hand_[0][1]) - int(hand_[18][1]))),
-            ((int(hand_[19][0]) - int(hand_[20][0])), (int(hand_[19][1]) - int(hand_[20][1])))))
+            ((wrist[0] - pinky_pip[0]), (wrist[1] - pinky_pip[1])),
+            ((pinky_dip[0] - pinky_tip[0]), (pinky_dip[1] - pinky_tip[1]))
+        ))
+
         return angle_list
 
     # 根據手指角度的串列內容，返回對應的手勢名稱
