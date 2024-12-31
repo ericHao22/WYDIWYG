@@ -209,6 +209,11 @@ class FingerDrawer:
                 if keyboard == ord('r'):
                     self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
                     self.init_color_palette()
+                if keyboard == ord('s'):  # 按下 's' 键保存图像test
+                    save_path = "output_canvas.png"
+                    cv2.imwrite(save_path, self.canvas)
+                    print(f"画布已保存为 {save_path}")
+
 
         self.cap.release()
         cv2.destroyAllWindows()
