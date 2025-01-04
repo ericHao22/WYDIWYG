@@ -182,7 +182,26 @@ class FingerDrawer:
 
         return frame_BGRA
 
+    def show_start_screen(self):
+        start_screen = np.zeros((self.height, self.width, 3), dtype='uint8')
+        start_text = [
+            " _       ____  __    ____     ____ _       ____  __   ______",
+            "| |     / /\ \/ /   / __ \   /  _/| |     / /\ \/ /  / ____/",
+            "| | /| / /  \  /   / / / /   / /  | | /| / /  \  /  / / __",
+            "| |/ |/ /   / /   / /_/ /  _/ /   | |/ |/ /   / /  / /_/ /",
+            "|_/|__/   /_/   /_____/  /___/   |__/|__/   /_/   \____/"
+        ]
+        y0, dy = self.height // 2 - 100, 30
+        for i, line in enumerate(start_text):
+            y = y0 + i * dy
+            cv2.putText(start_screen, line, (50, y), self.font_face, 0.7, (255, 255, 255), 2, self.line_type)
+        cv2.putText(start_screen, 'Press any key to start drawing', (50, y0 + len(start_text) * dy + 20), self.font_face, 1, (255, 255, 255), 2, self.line_type)
+        cv2.imshow('WYDIWYG', start_screen)
+        cv2.waitKey(0)  # 等待按下任何按鍵
+
     def run(self):
+        self.show_start_screen()
+
         options = HandLandmarkerOptions(
             base_options=BaseOptions(model_asset_path='./models/hand_landmarker.task'),
             running_mode=VisionRunningMode.VIDEO,
