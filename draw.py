@@ -191,6 +191,8 @@ class FingerDrawer:
             min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5
         )
+        sketch_image = None
+
         with HandLandmarker.create_from_options(options) as landmarker:
             if not self.cap.isOpened():
                 print("Cannot open camera")
@@ -216,8 +218,16 @@ class FingerDrawer:
                 cv2.imshow('WYDIWYG', frame)
 
                 keyboard = cv2.waitKey(5)
+
+                # 按下 q 退出畫面
                 if keyboard == ord('q'):
                     break
+
+                # 按下 s 完成草稿
+                if keyboard == ord('s'):
+                    sketch_image = cv2.cvtColor(self.canvas, cv2.COLOR_BGRA2BGR)
+                    break
+
                 # 按下 r 重置畫面
                 if keyboard == ord('r'):
                     self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
@@ -226,3 +236,5 @@ class FingerDrawer:
 
         self.cap.release()
         cv2.destroyAllWindows()
+
+        return sketch_image
