@@ -21,9 +21,9 @@ class FingerDrawer:
         self.line_type = cv2.LINE_AA
         self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
         self.dots = []
-        self.color = (0, 0, 255, 255)
+        self.color = (0, 0, 255, 255) # 畫筆預設為紅色
         self.init_video_capture(width, height, fourcc)
-        self.init_color_palette()
+        # self.init_color_palette()
         self.eraser_mode = False
 
     def init_video_capture(self, width, height, fourcc):
@@ -36,7 +36,8 @@ class FingerDrawer:
         self.cap = cap
 
     def init_color_palette(self):
-        # 在畫面上方放入紅色、綠色和藍色正方形
+        # 在畫面上方放入紅色、綠色和藍色正方形色塊，用來選擇畫筆顏色
+        # 目前暫時不使用，如要使用需要加上在手指進入色塊時改變 self.color 的邏輯
         cv2.rectangle(self.canvas, (20, 20), (60, 60), (0, 0, 255, 255), -1)
         cv2.rectangle(self.canvas, (80, 20), (120, 60), (0, 255, 0, 255), -1)
         cv2.rectangle(self.canvas, (140, 20), (180, 60), (255, 0, 0, 255), -1)
@@ -128,20 +129,12 @@ class FingerDrawer:
 
         if text == 'draw':
             fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
-            if 20 <= fy <= 60:
-                if 20 <= fx <= 60:
-                    self.color = (0, 0, 255, 255)  # 如果食指末端碰到紅色，顏色改成紅色
-                elif 80 <= fx <= 120:
-                    self.color = (0, 255, 0, 255)  # 如果食指末端碰到綠色，顏色改成綠色
-                elif 140 <= fx <= 180:
-                    self.color = (255, 0, 0, 255)  # 如果食指末端碰到藍色，顏色改成藍色
-            else:
-                self.dots.append([fx, fy])  # 記錄食指座標
-                if len(self.dots) > 1:
-                    start_point = tuple(self.dots[-2])
-                    end_point = tuple(self.dots[-1])
-                    cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
-        
+            self.dots.append([fx, fy])  # 記錄食指座標
+            if len(self.dots) > 1:
+                start_point = tuple(self.dots[-2])
+                end_point = tuple(self.dots[-1])
+                cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
+
         elif text == 'eraser':
             fx, fy = finger_points[4]  # 如果手勢為 'eraser'，記錄大拇指末端的座標
             eraser_color = (0, 0, 0, 0)
@@ -250,7 +243,7 @@ class FingerDrawer:
                 # 按下 r 重置畫面
                 if keyboard == ord('r'):
                     self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
-                    self.init_color_palette()
+                    # self.init_color_palette()
                     self.eraser_mode = False
 
         self.cap.release()
