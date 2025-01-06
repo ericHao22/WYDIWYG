@@ -24,6 +24,7 @@ class FingerDrawer:
         self.color = (0, 0, 255, 255)
         self.init_video_capture(width, height, fourcc)
         self.init_color_palette()
+        self.eraser_mode = False
 
     def init_video_capture(self, width, height, fourcc):
         cap = cv2.VideoCapture(0)
@@ -107,7 +108,9 @@ class FingerDrawer:
         f1, f2, f3, f4, f5 = finger_angle
         # 小於 50 表示手指伸直，大於等於 50 表示手指捲縮
         if f1 >= 50 and f2 < 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
-            return '1'
+            return 'draw'
+        elif f1 < 50 and f2 >= 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
+            return 'eraser'
         else:
             return ''
 
@@ -123,7 +126,7 @@ class FingerDrawer:
         finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
         text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
 
-        if text == '1':
+        if text == 'draw':
             fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
             if 20 <= fy <= 60:
                 if 20 <= fx <= 60:
@@ -138,6 +141,16 @@ class FingerDrawer:
                     start_point = tuple(self.dots[-2])
                     end_point = tuple(self.dots[-1])
                     cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
+        
+        elif text == 'eraser':
+            fx, fy = finger_points[4]  # 如果手勢為 'eraser'，記錄大拇指末端的座標
+            self.color = (0, 0, 0, 0)
+            self.dots.append([fx, fy])
+            if len(self.dots) > 1:
+                start_point = tuple(self.dots[-2])
+                end_point = tuple(self.dots[-1])
+                cv2.line(self.canvas, start_point, end_point, self.color, 20)
+
         else:
             self.dots = []  # 如果換成別的手勢，清空 dots
 
@@ -209,6 +222,7 @@ class FingerDrawer:
                 if keyboard == ord('r'):
                     self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
                     self.init_color_palette()
+                    self.eraser_mode = False
 
         self.cap.release()
         cv2.destroyAllWindows()
