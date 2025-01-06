@@ -238,6 +238,8 @@ class FingerDrawer:
                 # 按下 s 完成草稿
                 if keyboard == ord('s'):
                     sketch_image = cv2.cvtColor(self.canvas, cv2.COLOR_BGRA2BGR)
+                    sketch_image[np.any(sketch_image[:, :, :3] != [0, 0, 0], axis=-1)] = [255, 255, 255] # 將圖片非黑色的部分轉為白色
+                    sketch_image = cv2.bitwise_not(sketch_image) # 將圖片轉為白底黑線
                     break
 
                 # 按下 r 重置畫面
