@@ -144,12 +144,12 @@ class FingerDrawer:
         
         elif text == 'eraser':
             fx, fy = finger_points[4]  # 如果手勢為 'eraser'，記錄大拇指末端的座標
-            self.color = (0, 0, 0, 0)
+            eraser_color = (0, 0, 0, 0)
             self.dots.append([fx, fy])
             if len(self.dots) > 1:
                 start_point = tuple(self.dots[-2])
                 end_point = tuple(self.dots[-1])
-                cv2.line(self.canvas, start_point, end_point, self.color, 20)
+                cv2.line(self.canvas, start_point, end_point, eraser_color, 20)
 
         else:
             self.dots = []  # 如果換成別的手勢，清空 dots
