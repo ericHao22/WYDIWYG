@@ -22,6 +22,7 @@ class FingerDrawer:
         self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
         self.dots = []
         self.color = (0, 0, 255, 255) # 畫筆預設為紅色
+        self.sketch_image = None
         self.init_video_capture(width, height, fourcc)
         # self.init_color_palette()
 
@@ -191,6 +192,11 @@ class FingerDrawer:
         cv2.imshow('WYDIWYG', start_screen)
         cv2.waitKey(0)  # 等待按下任何按鍵
 
+    def create_sketch_image(self):
+        self.sketch_image = cv2.cvtColor(self.canvas, cv2.COLOR_BGRA2BGR)
+        self.sketch_image[np.any(self.sketch_image[:, :, :3] != [0, 0, 0], axis=-1)] = [255, 255, 255] # 將圖片非黑色的部分轉為白色
+        self.sketch_image = cv2.bitwise_not(self.sketch_image) # 將圖片轉為白底黑線
+
     def run(self):
         self.show_start_screen()
 
@@ -202,7 +208,6 @@ class FingerDrawer:
             min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5
         )
-        sketch_image = None
 
         with HandLandmarker.create_from_options(options) as landmarker:
             if not self.cap.isOpened():
@@ -236,9 +241,7 @@ class FingerDrawer:
 
                 # 按下 s 完成草稿
                 if keyboard == ord('s'):
-                    sketch_image = cv2.cvtColor(self.canvas, cv2.COLOR_BGRA2BGR)
-                    sketch_image[np.any(sketch_image[:, :, :3] != [0, 0, 0], axis=-1)] = [255, 255, 255] # 將圖片非黑色的部分轉為白色
-                    sketch_image = cv2.bitwise_not(sketch_image) # 將圖片轉為白底黑線
+                    self.create_sketch_image()
                     break
 
                 # 按下 r 重置畫面
@@ -249,4 +252,4 @@ class FingerDrawer:
         self.cap.release()
         cv2.destroyAllWindows()
 
-        return sketch_image
+        return self.sketch_image
