@@ -112,6 +112,10 @@ class FingerDrawer:
             return 'draw'
         elif f1 < 50 and f2 >= 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
             return 'eraser'
+        elif f1>=50 and f2>=50 and f3<50 and f4<50 and f5<50:
+            return 'ok'
+        elif f1<50 and f2>=50 and f3<50 and f4<50 and f5<50:
+            return 'ok'
         else:
             return ''
 
@@ -126,6 +130,7 @@ class FingerDrawer:
 
         finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
         text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
+        should_finish = False
 
         if text == 'draw':
             fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
@@ -144,8 +149,13 @@ class FingerDrawer:
                 end_point = tuple(self.dots[-1])
                 cv2.line(self.canvas, start_point, end_point, eraser_color, 20)
 
+        elif text == 'ok':
+            self.create_sketch_image()
+            should_finish = True
         else:
             self.dots = []  # 如果換成別的手勢，清空 dots
+
+        return should_finish
 
     def draw_landmarks(self, frame, results):
         if not results.hand_landmarks:
@@ -226,7 +236,7 @@ class FingerDrawer:
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 hand_landmarker_result = landmarker.detect_for_video(mp_image, int(time.time() * 1000))
 
-                self.process_landmarks(hand_landmarker_result)
+                should_finish = self.process_landmarks(hand_landmarker_result)
 
                 # frame = self.draw_landmarks(frame, hand_landmarker_result) # debug
                 frame = self.update_frame(frame, self.canvas)
@@ -234,6 +244,10 @@ class FingerDrawer:
                 cv2.imshow('WYDIWYG', frame)
 
                 keyboard = cv2.waitKey(5)
+
+                # 特定手勢代表結束繪圖
+                if should_finish:
+                    break
 
                 # 按下 q 退出畫面
                 if keyboard == ord('q'):
