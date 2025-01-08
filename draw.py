@@ -24,7 +24,6 @@ class FingerDrawer:
         self.color = (0, 0, 255, 255) # 畫筆預設為紅色
         self.init_video_capture(width, height, fourcc)
         # self.init_color_palette()
-        self.eraser_mode = False
 
     def init_video_capture(self, width, height, fourcc):
         cap = cv2.VideoCapture(0)
@@ -246,7 +245,6 @@ class FingerDrawer:
                 if keyboard == ord('r'):
                     self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
                     # self.init_color_palette()
-                    self.eraser_mode = False
 
         self.cap.release()
         cv2.destroyAllWindows()
