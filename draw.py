@@ -21,10 +21,9 @@ class FingerDrawer:
         self.line_type = cv2.LINE_AA
         self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
         self.dots = []
-        self.color = (0, 0, 255, 255)
+        self.color = (0, 0, 255, 255) # 畫筆預設為紅色
         self.init_video_capture(width, height, fourcc)
-        self.init_color_palette()
-        self.eraser_mode = False
+        # self.init_color_palette()
 
     def init_video_capture(self, width, height, fourcc):
         cap = cv2.VideoCapture(0)
@@ -36,7 +35,8 @@ class FingerDrawer:
         self.cap = cap
 
     def init_color_palette(self):
-        # 在畫面上方放入紅色、綠色和藍色正方形
+        # 在畫面上方放入紅色、綠色和藍色正方形色塊，用來選擇畫筆顏色
+        # 目前暫時不使用，如要使用需要加上在手指進入色塊時改變 self.color 的邏輯
         cv2.rectangle(self.canvas, (20, 20), (60, 60), (0, 0, 255, 255), -1)
         cv2.rectangle(self.canvas, (80, 20), (120, 60), (0, 255, 0, 255), -1)
         cv2.rectangle(self.canvas, (140, 20), (180, 60), (255, 0, 0, 255), -1)
@@ -128,20 +128,12 @@ class FingerDrawer:
 
         if text == 'draw':
             fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
-            if 20 <= fy <= 60:
-                if 20 <= fx <= 60:
-                    self.color = (0, 0, 255, 255)  # 如果食指末端碰到紅色，顏色改成紅色
-                elif 80 <= fx <= 120:
-                    self.color = (0, 255, 0, 255)  # 如果食指末端碰到綠色，顏色改成綠色
-                elif 140 <= fx <= 180:
-                    self.color = (255, 0, 0, 255)  # 如果食指末端碰到藍色，顏色改成藍色
-            else:
-                self.dots.append([fx, fy])  # 記錄食指座標
-                if len(self.dots) > 1:
-                    start_point = tuple(self.dots[-2])
-                    end_point = tuple(self.dots[-1])
-                    cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
-        
+            self.dots.append([fx, fy])  # 記錄食指座標
+            if len(self.dots) > 1:
+                start_point = tuple(self.dots[-2])
+                end_point = tuple(self.dots[-1])
+                cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
+
         elif text == 'eraser':
             fx, fy = finger_points[4]  # 如果手勢為 'eraser'，記錄大拇指末端的座標
             eraser_color = (0, 0, 0, 0)
@@ -182,7 +174,26 @@ class FingerDrawer:
 
         return frame_BGRA
 
+    def show_start_screen(self):
+        start_screen = np.zeros((self.height, self.width, 3), dtype='uint8')
+        start_text = [
+            " _       ____  __    ____     ____ _       ____  __   ______",
+            "| |     / /\ \/ /   / __ \   /  _/| |     / /\ \/ /  / ____/",
+            "| | /| / /  \  /   / / / /   / /  | | /| / /  \  /  / / __",
+            "| |/ |/ /   / /   / /_/ /  _/ /   | |/ |/ /   / /  / /_/ /",
+            "|_/|__/   /_/   /_____/  /___/   |__/|__/   /_/   \____/"
+        ]
+        y0, dy = self.height // 2 - 100, 30
+        for i, line in enumerate(start_text):
+            y = y0 + i * dy
+            cv2.putText(start_screen, line, (50, y), self.font_face, 0.7, (255, 255, 255), 2, self.line_type)
+        cv2.putText(start_screen, 'Press any key to start drawing', (50, y0 + len(start_text) * dy + 20), self.font_face, 1, (255, 255, 255), 2, self.line_type)
+        cv2.imshow('WYDIWYG', start_screen)
+        cv2.waitKey(0)  # 等待按下任何按鍵
+
     def run(self):
+        self.show_start_screen()
+
         options = HandLandmarkerOptions(
             base_options=BaseOptions(model_asset_path='./models/hand_landmarker.task'),
             running_mode=VisionRunningMode.VIDEO,
@@ -191,6 +202,8 @@ class FingerDrawer:
             min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5
         )
+        sketch_image = None
+
         with HandLandmarker.create_from_options(options) as landmarker:
             if not self.cap.isOpened():
                 print("Cannot open camera")
@@ -216,13 +229,24 @@ class FingerDrawer:
                 cv2.imshow('WYDIWYG', frame)
 
                 keyboard = cv2.waitKey(5)
+
+                # 按下 q 退出畫面
                 if keyboard == ord('q'):
                     break
+
+                # 按下 s 完成草稿
+                if keyboard == ord('s'):
+                    sketch_image = cv2.cvtColor(self.canvas, cv2.COLOR_BGRA2BGR)
+                    sketch_image[np.any(sketch_image[:, :, :3] != [0, 0, 0], axis=-1)] = [255, 255, 255] # 將圖片非黑色的部分轉為白色
+                    sketch_image = cv2.bitwise_not(sketch_image) # 將圖片轉為白底黑線
+                    break
+
                 # 按下 r 重置畫面
                 if keyboard == ord('r'):
                     self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
-                    self.init_color_palette()
-                    self.eraser_mode = False
+                    # self.init_color_palette()
 
         self.cap.release()
         cv2.destroyAllWindows()
+
+        return sketch_image
