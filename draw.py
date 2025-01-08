@@ -111,7 +111,7 @@ class FingerDrawer:
         if f1 >= 50 and f2 < 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
             return 'draw'
         elif f1 < 50 and f2 >= 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
-            return 'eraser'
+            return 'erase'
         elif f1>=50 and f2>=50 and f3<50 and f4<50 and f5<50:
             return 'ok'
         elif f1<50 and f2>=50 and f3<50 and f4<50 and f5<50:
@@ -129,20 +129,18 @@ class FingerDrawer:
             return
 
         finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
-        text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
+        action = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
         should_finish = False
 
-        if text == 'draw':
+        if action == 'draw':
             dot = list(finger_points[8])  # 如果手勢為 'draw'，使用食指末端的座標
             line_color = self.color
             self.draw_line(dot, line_color, 5)
-
-        elif text == 'eraser':
-            dot = list(finger_points[4])  # 如果手勢為 'eraser'，使用大拇指末端的座標
+        elif action == 'erase':
+            dot = list(finger_points[4])  # 如果手勢為 'erase'，使用大拇指末端的座標
             line_color = (0, 0, 0, 0)  # 擦掉筆跡等於在黑色畫布上畫黑色線條
             self.draw_line(dot, line_color, 20)
-
-        elif text == 'ok':
+        elif action == 'ok':
             self.create_sketch_image()
             should_finish = True
         else:
