@@ -133,21 +133,14 @@ class FingerDrawer:
         should_finish = False
 
         if text == 'draw':
-            fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
-            self.dots.append([fx, fy])  # 記錄食指座標
-            if len(self.dots) > 1:
-                start_point = tuple(self.dots[-2])
-                end_point = tuple(self.dots[-1])
-                cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
+            dot = list(finger_points[8])  # 如果手勢為 'draw'，使用食指末端的座標
+            line_color = self.color
+            self.draw_line(dot, line_color, 5)
 
         elif text == 'eraser':
-            fx, fy = finger_points[4]  # 如果手勢為 'eraser'，記錄大拇指末端的座標
-            eraser_color = (0, 0, 0, 0)
-            self.dots.append([fx, fy])
-            if len(self.dots) > 1:
-                start_point = tuple(self.dots[-2])
-                end_point = tuple(self.dots[-1])
-                cv2.line(self.canvas, start_point, end_point, eraser_color, 20)
+            dot = list(finger_points[4])  # 如果手勢為 'eraser'，使用大拇指末端的座標
+            line_color = (0, 0, 0, 0)  # 擦掉筆跡等於在黑色畫布上畫黑色線條
+            self.draw_line(dot, line_color, 20)
 
         elif text == 'ok':
             self.create_sketch_image()
@@ -156,6 +149,14 @@ class FingerDrawer:
             self.dots = []  # 如果換成別的手勢，清空 dots
 
         return should_finish
+
+    def draw_line(self, dot, line_color, thickness):
+        self.dots.append(dot)  # 記錄筆跡座標
+
+        if len(self.dots) > 1:
+            start_point = tuple(self.dots[-2])
+            end_point = tuple(self.dots[-1])
+            cv2.line(self.canvas, start_point, end_point, line_color, thickness)  # 在黑色畫布上畫圖
 
     def draw_landmarks(self, frame, results):
         if not results.hand_landmarks:
