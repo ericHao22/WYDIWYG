@@ -260,6 +260,5 @@ class FingerDrawer:
                     # self.init_color_palette()
 
         self.cap.release()
-        cv2.destroyAllWindows()
 
         return self.sketch_image
