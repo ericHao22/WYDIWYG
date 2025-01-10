@@ -22,6 +22,7 @@ class FingerDrawer:
         self.canvas = np.zeros((self.height, self.width, 4), dtype='uint8')
         self.dots = []
         self.color = (0, 0, 255, 255) # 畫筆預設為紅色
+        self.sketch_image = None
         self.init_video_capture(width, height, fourcc)
         # self.init_color_palette()
 
@@ -110,7 +111,11 @@ class FingerDrawer:
         if f1 >= 50 and f2 < 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
             return 'draw'
         elif f1 < 50 and f2 >= 50 and f3 >= 50 and f4 >= 50 and f5 >= 50:
-            return 'eraser'
+            return 'erase'
+        elif f1>=50 and f2>=50 and f3<50 and f4<50 and f5<50:
+            return 'ok'
+        elif f1<50 and f2>=50 and f3<50 and f4<50 and f5<50:
+            return 'ok'
         else:
             return ''
 
@@ -124,27 +129,32 @@ class FingerDrawer:
             return
 
         finger_angle = self.hand_angle(finger_points)  # 計算手指角度，回傳長度為 5 的串列
-        text = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
+        action = self.hand_pos(finger_angle)  # 取得手勢所回傳的內容
+        should_finish = False
 
-        if text == 'draw':
-            fx, fy = finger_points[8]  # 如果手勢為 1，記錄食指末端的座標
-            self.dots.append([fx, fy])  # 記錄食指座標
-            if len(self.dots) > 1:
-                start_point = tuple(self.dots[-2])
-                end_point = tuple(self.dots[-1])
-                cv2.line(self.canvas, start_point, end_point, self.color, 5)  # 在黑色畫布上畫圖
-
-        elif text == 'eraser':
-            fx, fy = finger_points[4]  # 如果手勢為 'eraser'，記錄大拇指末端的座標
-            eraser_color = (0, 0, 0, 0)
-            self.dots.append([fx, fy])
-            if len(self.dots) > 1:
-                start_point = tuple(self.dots[-2])
-                end_point = tuple(self.dots[-1])
-                cv2.line(self.canvas, start_point, end_point, eraser_color, 20)
-
+        if action == 'draw':
+            dot = list(finger_points[8])  # 如果手勢為 'draw'，使用食指末端的座標
+            line_color = self.color
+            self.draw_line(dot, line_color, 5)
+        elif action == 'erase':
+            dot = list(finger_points[4])  # 如果手勢為 'erase'，使用大拇指末端的座標
+            line_color = (0, 0, 0, 0)  # 擦掉筆跡等於在黑色畫布上畫黑色線條
+            self.draw_line(dot, line_color, 20)
+        elif action == 'ok':
+            self.create_sketch_image()
+            should_finish = True
         else:
             self.dots = []  # 如果換成別的手勢，清空 dots
+
+        return should_finish
+
+    def draw_line(self, dot, line_color, thickness):
+        self.dots.append(dot)  # 記錄筆跡座標
+
+        if len(self.dots) > 1:
+            start_point = tuple(self.dots[-2])
+            end_point = tuple(self.dots[-1])
+            cv2.line(self.canvas, start_point, end_point, line_color, thickness)  # 在黑色畫布上畫圖
 
     def draw_landmarks(self, frame, results):
         if not results.hand_landmarks:
@@ -175,21 +185,23 @@ class FingerDrawer:
         return frame_BGRA
 
     def show_start_screen(self):
-        start_screen = np.zeros((self.height, self.width, 3), dtype='uint8')
-        start_text = [
+        logo_text = [
             " _       ____  __    ____     ____ _       ____  __   ______",
             "| |     / /\ \/ /   / __ \   /  _/| |     / /\ \/ /  / ____/",
             "| | /| / /  \  /   / / / /   / /  | | /| / /  \  /  / / __",
             "| |/ |/ /   / /   / /_/ /  _/ /   | |/ |/ /   / /  / /_/ /",
-            "|_/|__/   /_/   /_____/  /___/   |__/|__/   /_/   \____/"
+            "|__/|__/   /_/   /_____/  /___/   |__/|__/   /_/   \____/"
         ]
-        y0, dy = self.height // 2 - 100, 30
-        for i, line in enumerate(start_text):
-            y = y0 + i * dy
-            cv2.putText(start_screen, line, (50, y), self.font_face, 0.7, (255, 255, 255), 2, self.line_type)
-        cv2.putText(start_screen, 'Press any key to start drawing', (50, y0 + len(start_text) * dy + 20), self.font_face, 1, (255, 255, 255), 2, self.line_type)
-        cv2.imshow('WYDIWYG', start_screen)
+        logo_image = cv2.imread('./images/logo.png', cv2.IMREAD_UNCHANGED)
+        logo_image = cv2.resize(logo_image, (self.width, self.height))
+
+        cv2.imshow('WYDIWYG', logo_image)
         cv2.waitKey(0)  # 等待按下任何按鍵
+
+    def create_sketch_image(self):
+        self.sketch_image = cv2.cvtColor(self.canvas, cv2.COLOR_BGRA2BGR)
+        self.sketch_image[np.any(self.sketch_image[:, :, :3] != [0, 0, 0], axis=-1)] = [255, 255, 255] # 將圖片非黑色的部分轉為白色
+        self.sketch_image = cv2.bitwise_not(self.sketch_image) # 將圖片轉為白底黑線
 
     def run(self):
         self.show_start_screen()
@@ -202,7 +214,6 @@ class FingerDrawer:
             min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5
         )
-        sketch_image = None
 
         with HandLandmarker.create_from_options(options) as landmarker:
             if not self.cap.isOpened():
@@ -221,7 +232,7 @@ class FingerDrawer:
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 hand_landmarker_result = landmarker.detect_for_video(mp_image, int(time.time() * 1000))
 
-                self.process_landmarks(hand_landmarker_result)
+                should_finish = self.process_landmarks(hand_landmarker_result)
 
                 # frame = self.draw_landmarks(frame, hand_landmarker_result) # debug
                 frame = self.update_frame(frame, self.canvas)
@@ -230,15 +241,17 @@ class FingerDrawer:
 
                 keyboard = cv2.waitKey(5)
 
+                # 特定手勢代表結束繪圖
+                if should_finish:
+                    break
+
                 # 按下 q 退出畫面
                 if keyboard == ord('q'):
                     break
 
                 # 按下 s 完成草稿
                 if keyboard == ord('s'):
-                    sketch_image = cv2.cvtColor(self.canvas, cv2.COLOR_BGRA2BGR)
-                    sketch_image[np.any(sketch_image[:, :, :3] != [0, 0, 0], axis=-1)] = [255, 255, 255] # 將圖片非黑色的部分轉為白色
-                    sketch_image = cv2.bitwise_not(sketch_image) # 將圖片轉為白底黑線
+                    self.create_sketch_image()
                     break
 
                 # 按下 r 重置畫面
@@ -247,6 +260,5 @@ class FingerDrawer:
                     # self.init_color_palette()
 
         self.cap.release()
-        cv2.destroyAllWindows()
 
-        return sketch_image
+        return self.sketch_image

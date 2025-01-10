@@ -29,7 +29,6 @@ class SmartPainter:
 
         cv2.imshow('WYDIWYG', painting_image)
         cv2.waitKey(0)
-        cv2.destroyAllWindows()
 
         return painting_image
 
